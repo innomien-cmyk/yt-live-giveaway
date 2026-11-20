@@ -5,123 +5,76 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>YouTube Live 抽獎工具</title>
-
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;padding:24px;background:#101827;color:#f5f7fb;
-  font-family:Arial,"Noto Sans TC",sans-serif
-}
+body{margin:0;padding:24px;background:#101827;color:#f5f7fb;font-family:Arial,"Noto Sans TC",sans-serif}
 main{max-width:950px;margin:auto}
 h1{font-size:28px}
-.panel{
-  background:#1c293b;border:1px solid #34445c;
-  border-radius:14px;padding:20px;margin:16px 0
-}
-button,input{
-  font:inherit;border-radius:8px;padding:11px;border:0
-}
-button{
-  background:#3679ed;color:white;cursor:pointer;
-  margin:5px 5px 5px 0
-}
+.panel{background:#1c293b;border:1px solid #34445c;border-radius:14px;padding:20px;margin:16px 0}
+button,input{font:inherit;border-radius:8px;padding:11px;border:0}
+button{background:#3679ed;color:white;cursor:pointer;margin:5px 5px 5px 0}
 button:disabled{opacity:.45;cursor:not-allowed}
-input{
-  background:#f5f7fb;color:#172033;max-width:100%
-}
+input{background:#f5f7fb;color:#172033;max-width:100%;width:100%}
 .status{color:#9fc1ff;overflow-wrap:anywhere}
 .stats{display:flex;gap:24px;flex-wrap:wrap}
 .big{font-size:28px;font-weight:bold}
-#chat{
-  height:300px;overflow:auto;background:#101827;
-  padding:12px;border-radius:8px
-}
-.msg{
-  padding:8px 4px;border-bottom:1px solid #29364a;
-  overflow-wrap:anywhere
-}
+#chat{height:300px;overflow:auto;background:#101827;padding:12px;border-radius:8px}
+.msg{padding:8px 4px;border-bottom:1px solid #29364a;overflow-wrap:anywhere}
 .muted{color:#aab6c8;font-size:13px}
-#winner{
-  font-size:30px;color:#ffd166;font-weight:bold;
-  min-height:42px;overflow-wrap:anywhere
-}
+#winner{font-size:30px;color:#ffd166;font-weight:bold;min-height:42px}
 </style>
 </head>
-
 <body>
 <main>
-
 <h1>🎉 YouTube Live 抽獎工具</h1>
-<p class="muted">
-連接自己的 YouTube 直播聊天室，依關鍵字統計參加者並隨機抽獎。
-</p>
+<p class="muted">輸入直播網址，讀取聊天室、統計參加者並隨機抽獎。</p>
 
 <section class="panel">
 <h2>① 連接 YouTube</h2>
-
-<button id="login" onclick="login()">Google 登入／授權</button>
-<button id="connect" onclick="connectLive()" disabled>連接目前直播</button>
+<p>直播網址</p>
+<input id="videoUrl" value="https://www.youtube.com/watch?v=J4GbKrMOWMA">
+<br><br>
+<button onclick="login()">Google 登入／授權</button>
+<button id="connect" onclick="connectLive()" disabled>連接這場直播</button>
 <button onclick="disconnect()">中斷連線</button>
-
 <p id="status" class="status">尚未登入</p>
 <p id="broadcast" class="muted"></p>
 </section>
 
 <section class="panel">
 <h2>② 抽獎設定</h2>
-
-<p>參加關鍵字（例如：抽獎）</p>
+<p>參加關鍵字</p>
 <input id="keyword" value="抽獎" placeholder="輸入參加關鍵字">
-
-<p class="muted">
-留言內容包含這個關鍵字，就會列入參加名單。
-每個 YouTube 帳號只計算一次。
-</p>
-
+<p class="muted">留言包含關鍵字即可參加，每個 YouTube 頻道帳號只計算一次。</p>
 <button onclick="applyKeyword()">套用關鍵字</button>
 </section>
 
 <section class="panel">
 <h2>③ 即時統計</h2>
-
 <div class="stats">
-  <div>
-    <div class="muted">聊天室留言</div>
-    <div class="big" id="messageCount">0</div>
-  </div>
-  <div>
-    <div class="muted">符合資格人數</div>
-    <div class="big" id="participantCount">0</div>
-  </div>
+<div><div class="muted">聊天室留言</div><div class="big" id="messageCount">0</div></div>
+<div><div class="muted">符合資格人數</div><div class="big" id="participantCount">0</div></div>
 </div>
 </section>
 
 <section class="panel">
 <h2>④ 聊天室留言</h2>
-<div id="chat">
-  <span class="muted">連接直播後，留言會顯示在這裡。</span>
-</div>
+<div id="chat"><span class="muted">連接直播後，留言會顯示在這裡。</span></div>
 </section>
 
 <section class="panel">
 <h2>⑤ 抽出得獎者</h2>
-
 <button id="draw" onclick="drawWinner()" disabled>🎲 隨機抽獎</button>
 <button onclick="exportExcel()">📥 匯出 Excel 名單</button>
-
 <div id="winner"></div>
 <div id="winnerInfo" class="muted"></div>
 </section>
-
 </main>
 
 <script>
-const CLIENT_ID =
-"903719977286-l7q5q3pk7asj4pjmp5ntj087lighl7jg.apps.googleusercontent.com";
-
+const CLIENT_ID = "903719977286-l7q5q3pk7asj4pjmp5ntj087lighl7jg.apps.googleusercontent.com";
 const SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 
 let tokenClient = null;
@@ -131,7 +84,6 @@ let timer = null;
 let nextPageToken = null;
 let pollInterval = 5000;
 let messageCount = 0;
-
 let participants = new Map();
 let allMessages = [];
 
@@ -141,22 +93,20 @@ function setStatus(text){
   $("status").textContent = text;
 }
 
-// Google 登入
 function login(){
   if(!window.google?.accounts?.oauth2){
-    setStatus("Google 登入元件載入中，請稍候再試。");
+    setStatus("Google 登入元件載入中，請稍後再試。");
     return;
   }
 
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPE,
-    callback: response => {
+    client_id:CLIENT_ID,
+    scope:SCOPE,
+    callback:response=>{
       if(response.error){
-        setStatus("登入失敗：" + response.error);
+        setStatus("登入失敗："+response.error);
         return;
       }
-
       accessToken = response.access_token;
       $("connect").disabled = false;
       setStatus("Google 授權成功，可以連接直播了。");
@@ -166,34 +116,49 @@ function login(){
   tokenClient.requestAccessToken();
 }
 
-// 呼叫 YouTube API
-async function api(path, params = {}){
+async function api(path,params={}){
   const url = new URL(
-    "https://www.googleapis.com/youtube/v3/" + path
+    "https://www.googleapis.com/youtube/v3/"+path
   );
 
-  Object.entries(params).forEach(([key,value]) => {
-    url.searchParams.set(key,value);
+  Object.entries(params).forEach(([k,v])=>{
+    url.searchParams.set(k,v);
   });
 
   const response = await fetch(url,{
-    headers:{
-      Authorization:"Bearer " + accessToken
-    }
+    headers:{Authorization:"Bearer "+accessToken}
   });
 
   const data = await response.json();
 
   if(!response.ok){
+    const reason = data.error?.errors?.[0]?.reason || "";
     throw new Error(
-      data.error?.message || "YouTube API 發生錯誤"
+      (data.error?.message || "YouTube API 發生錯誤")+
+      (reason ? "（"+reason+"）" : "")
     );
   }
 
   return data;
 }
 
-// 尋找目前正在進行的直播
+function getVideoId(value){
+  try{
+    const url = new URL(value.trim());
+
+    if(url.hostname === "youtu.be"){
+      return url.pathname.slice(1);
+    }
+
+    if(url.hostname.includes("youtube.com")){
+      return url.searchParams.get("v") ||
+        url.pathname.split("/").filter(Boolean).pop();
+    }
+  }catch(e){}
+
+  return value.trim();
+}
+
 async function connectLive(){
   if(!accessToken){
     setStatus("請先登入 Google。");
@@ -203,57 +168,65 @@ async function connectLive(){
   stopPolling();
 
   try{
-    setStatus("正在尋找目前直播……");
+    const videoId = getVideoId($("videoUrl").value);
 
-    const data = await api("liveBroadcasts",{
-      part:"snippet,contentDetails,status",
-      mine:"true",
-      broadcastType:"all",
-      maxResults:"50"
+    if(!videoId){
+      setStatus("請輸入有效的 YouTube 直播網址。");
+      return;
+    }
+
+    setStatus("正在查詢這場直播……");
+
+    const videoData = await api("videos",{
+      part:"snippet,liveStreamingDetails",
+      id:videoId
     });
 
-    const live = (data.items || []).find(item =>
-      item.status?.lifeCycleStatus === "live" &&
-      item.contentDetails?.activeLiveChatId
-    );
+    if(!videoData.items || videoData.items.length===0){
+      setStatus("找不到這支影片，請檢查網址及影片 ID。");
+      return;
+    }
 
-    if(!live){
+    const video = videoData.items[0];
+    liveChatId = video.liveStreamingDetails?.activeLiveChatId;
+
+    if(!liveChatId){
       setStatus(
-        "找不到正在進行的直播。請確認直播已開始，並使用正確的 YouTube 帳號登入。"
+        "找到影片：「"+video.snippet.title+
+        "」，但目前沒有可用的即時聊天室。請確認直播正在進行且聊天室已開啟。"
       );
       return;
     }
 
-    liveChatId = live.contentDetails.activeLiveChatId;
-
     $("broadcast").textContent =
-      "目前直播：" + live.snippet.title;
+      "目前直播："+video.snippet.title;
 
     participants.clear();
-    allMessages = [];
-    messageCount = 0;
-    nextPageToken = null;
+    allMessages=[];
+    messageCount=0;
+    nextPageToken=null;
+
+    $("chat").innerHTML="";
+    $("winner").textContent="";
+    $("winnerInfo").textContent="";
 
     updateStats();
+    $("draw").disabled=false;
 
-    $("chat").innerHTML = "";
-    $("draw").disabled = false;
-
-    setStatus("已連接直播聊天室，正在讀取留言……");
+    setStatus("已找到聊天室，正在讀取留言……");
 
     await pollChat();
 
-  }catch(error){
-    setStatus("連接失敗：" + error.message);
+  }catch(e){
+    setStatus("連接失敗："+e.message);
   }
 }
 
-// 套用關鍵字並重新計算參加者
 function applyKeyword(){
-  const keyword = $("keyword").value.trim().toLowerCase();
+  const keyword=$("keyword").value.trim().toLowerCase();
 
   if(!keyword){
-    setStatus("請先輸入參加關鍵字。");
+    setStatus("請輸入參加關鍵字。");
     return;
   }
 
@@ -269,58 +242,47 @@ function applyKeyword(){
   }
 
   updateStats();
-
-  setStatus("已套用關鍵字：「" + keyword + "」。");
+  setStatus("已套用關鍵字："+keyword);
 }
 
-// 讀取聊天室留言
 async function pollChat(){
-  if(!liveChatId || !accessToken) return;
+  if(!liveChatId || !accessToken)return;
 
   try{
-    const params = {
+    const params={
       liveChatId:liveChatId,
       part:"snippet,authorDetails",
       maxResults:"200"
     };
 
     if(nextPageToken){
-      params.pageToken = nextPageToken;
+      params.pageToken=nextPageToken;
     }
 
-    const data = await api("liveChatMessages",params);
+    const data=await api("liveChatMessages",params);
 
-    nextPageToken = data.nextPageToken || null;
+    nextPageToken=data.nextPageToken||null;
+    pollInterval=Math.max(data.pollingIntervalMillis||5000,1000);
 
-    pollInterval = Math.max(
-      data.pollingIntervalMillis || 5000,
-      1000
-    );
+    for(const item of (data.items||[])){
+      const author=item.authorDetails||{};
+      const snippet=item.snippet||{};
 
-    for(const item of (data.items || [])){
-      const author = item.authorDetails || {};
-      const snippet = item.snippet || {};
+      const channelId=author.channelId||author.displayName;
+      const text=snippet.displayMessage||"";
 
-      const channelId =
-        author.channelId || author.displayName;
-
-      const text =
-        snippet.displayMessage || "";
-
-      const msg = {
+      const msg={
         channelId:channelId,
-        name:author.displayName || "未知使用者",
+        name:author.displayName||"未知使用者",
         text:text,
-        time:snippet.publishedAt || new Date().toISOString()
+        time:snippet.publishedAt||new Date().toISOString()
       };
 
       messageCount++;
       allMessages.push(msg);
-
       showMessage(msg);
 
-      const keyword =
-        $("keyword").value.trim().toLowerCase();
+      const keyword=$("keyword").value.trim().toLowerCase();
 
       if(
         keyword &&
@@ -332,142 +294,107 @@ async function pollChat(){
     }
 
     updateStats();
+    setStatus("聊天室連線正常，正在即時接收留言。");
 
-    timer = setTimeout(pollChat,pollInterval);
+    timer=setTimeout(pollChat,pollInterval);
 
-  }catch(error){
-    setStatus("讀取留言時發生錯誤：" + error.message);
-
-    timer = setTimeout(pollChat,10000);
+  }catch(e){
+    setStatus("讀取聊天室失敗："+e.message);
+    timer=setTimeout(pollChat,10000);
   }
 }
 
-// 顯示留言
 function showMessage(msg){
-  const el = document.createElement("div");
-  el.className = "msg";
+  const el=document.createElement("div");
+  el.className="msg";
 
-  const name = document.createElement("strong");
-  name.textContent = msg.name + "：";
+  const name=document.createElement("strong");
+  name.textContent=msg.name+"：";
 
-  const content = document.createElement("span");
-  content.textContent = msg.text;
+  const content=document.createElement("span");
+  content.textContent=msg.text;
 
   el.append(name,content);
-
   $("chat").appendChild(el);
+  $("chat").scrollTop=$("chat").scrollHeight;
 
-  $("chat").scrollTop =
-    $("chat").scrollHeight;
-
-  while($("chat").children.length > 200){
-    $("chat").removeChild(
-      $("chat").firstChild
-    );
+  while($("chat").children.length>200){
+    $("chat").removeChild($("chat").firstChild);
   }
 }
 
-// 更新統計數字
 function updateStats(){
-  $("messageCount").textContent = messageCount;
-  $("participantCount").textContent = participants.size;
+  $("messageCount").textContent=messageCount;
+  $("participantCount").textContent=participants.size;
 }
 
-// 隨機抽獎
 function drawWinner(){
-  const list = Array.from(participants.values());
+  const list=Array.from(participants.values());
 
   if(!list.length){
-    $("winner").textContent =
-      "目前沒有符合資格的參加者";
-
-    $("winnerInfo").textContent = "";
+    $("winner").textContent="目前沒有符合資格的參加者";
+    $("winnerInfo").textContent="";
     return;
   }
 
-  const winner =
-    list[Math.floor(Math.random() * list.length)];
+  const winner=list[Math.floor(Math.random()*list.length)];
 
-  $("winner").textContent =
-    "🎉 " + winner.name;
-
-  $("winnerInfo").textContent =
-    "留言：「" + winner.text + "」";
+  $("winner").textContent="🎉 "+winner.name;
+  $("winnerInfo").textContent="留言：「"+winner.text+"」";
 }
 
-// 匯出 Excel
 function exportExcel(){
   if(!window.XLSX){
     alert("Excel 元件尚未載入，請稍後再試。");
     return;
   }
 
-  const rows = Array.from(participants.values())
-    .map((person,index) => ({
-      "編號":index + 1,
-      "YouTube 名稱":person.name,
-      "留言內容":person.text,
-      "留言時間":person.time,
-      "頻道 ID":person.channelId
-    }));
+  const rows=Array.from(participants.values()).map((p,i)=>({
+    "編號":i+1,
+    "YouTube 名稱":p.name,
+    "留言內容":p.text,
+    "留言時間":p.time,
+    "頻道 ID":p.channelId
+  }));
 
   if(!rows.length){
     alert("目前沒有符合資格的參加者。");
     return;
   }
 
-  const sheet = XLSX.utils.json_to_sheet(rows);
-  const book = XLSX.utils.book_new();
+  const sheet=XLSX.utils.json_to_sheet(rows);
+  const book=XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(
-    book,
-    sheet,
-    "抽獎名單"
-  );
-
-  XLSX.writeFile(
-    book,
-    "YouTube直播抽獎名單.xlsx"
-  );
+  XLSX.utils.book_append_sheet(book,sheet,"抽獎名單");
+  XLSX.writeFile(book,"YouTube直播抽獎名單.xlsx");
 }
 
-// 停止讀取留言
 function stopPolling(){
-  if(timer){
-    clearTimeout(timer);
-  }
-
-  timer = null;
+  if(timer)clearTimeout(timer);
+  timer=null;
 }
 
-// 中斷連線
 function disconnect(){
   stopPolling();
 
-  liveChatId = null;
-  accessToken = null;
-  tokenClient = null;
-
+  liveChatId=null;
+  accessToken=null;
+  tokenClient=null;
   participants.clear();
-  allMessages = [];
-  messageCount = 0;
-  nextPageToken = null;
+  allMessages=[];
+  messageCount=0;
+  nextPageToken=null;
 
-  $("connect").disabled = true;
-  $("draw").disabled = true;
-
-  $("broadcast").textContent = "";
-  $("chat").innerHTML =
-    '<span class="muted">已中斷連線。</span>';
-
-  $("winner").textContent = "";
-  $("winnerInfo").textContent = "";
+  $("connect").disabled=true;
+  $("draw").disabled=true;
+  $("broadcast").textContent="";
+  $("chat").innerHTML='<span class="muted">已中斷連線。</span>';
+  $("winner").textContent="";
+  $("winnerInfo").textContent="";
 
   updateStats();
-
   setStatus("已中斷連線。");
 }
 </script>
-
 </body>
 </html>
